@@ -47,6 +47,17 @@ fun tsc() =
           projection(LAYER_MULTI_LANE_DYNAMIC_RELATIONS)
         }
 
+        monitors {
+          monitor("Broke keep right rule") { ctx -> obeysKeepRightRule.holds(ctx) }
+          monitor("Exceeded speed limit") { ctx -> obeyedSpeedLimit.holds(ctx) }
+          monitor("Exceeded speed limit by more than 10%") { ctx -> obeyed110SpeedLimit.holds(ctx) }
+          monitor("Exceeded speed limit by more than 30%") { ctx -> obeyed130SpeedLimit.holds(ctx) }
+          monitor("Exceeded speed limit by more than 50%") { ctx -> obeyed150SpeedLimit.holds(ctx) }
+          monitor("Doesnt drive at the center of the lane") {ctx -> drivesAtCenterOfLane.holds(ctx) }
+          monitor("Distance to leading vehicle to small") {ctx -> keepsDistanceToLeadingVehicle.holds(ctx) }
+          monitor("Vehicles collided") { ctx -> ctx.entityIds.any { otherVehicleId -> noCollisions.holds(ctx, entityId2 = otherVehicleId) } }
+        }
+
         exclusive("Weather") {
           projections {
             projectionRecursive(LAYER_4_5)

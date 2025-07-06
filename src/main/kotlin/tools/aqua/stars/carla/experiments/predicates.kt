@@ -24,6 +24,7 @@ import tools.aqua.stars.core.evaluation.PredicateContext
 import tools.aqua.stars.core.evaluation.UnaryPredicate.Companion.predicate
 import tools.aqua.stars.data.av.dataclasses.*
 import tools.aqua.stars.logic.kcmftbl.*
+import kotlin.math.sqrt
 
 // region predicates/formulas
 
@@ -345,6 +346,21 @@ val obeyedSpeedLimit =
       globally(v) { v -> (v.effVelocityInMPH) <= v.lane.speedAt(v.positionOnLane) }
     }
 
+val obeyed110SpeedLimit =
+    predicate(Vehicle::class) { _, v ->
+        globally(v) { v -> (v.effVelocityInMPH) <= v.lane.speedAt(v.positionOnLane) * 1.1 }
+    }
+
+val obeyed130SpeedLimit =
+    predicate(Vehicle::class) { _, v ->
+        globally(v) { v -> (v.effVelocityInMPH) <= v.lane.speedAt(v.positionOnLane) * 1.3 }
+    }
+
+val obeyed150SpeedLimit =
+    predicate(Vehicle::class) { _, v ->
+        globally(v) { v -> (v.effVelocityInMPH) <= v.lane.speedAt(v.positionOnLane) * 1.5 }
+    }
+
 /** [Vehicle] v has a red light on its [Lane]. */
 val hasRedLight =
     predicate(Vehicle::class) { _, v ->
@@ -396,5 +412,55 @@ val makesLeftTurn =
 /** [Vehicle] v made no turn. */
 val makesNoTurn =
     predicate(Vehicle::class) { _, v -> minPrevalence(v, 0.8) { v -> v.lane.isStraight } }
+
+
+val obeysKeepRightRule =
+    predicate(Vehicle::class) { ctx, v ->
+        globally(v) { v ->
+            v.tickData.vehicles.any { v1 -> overtaking.holds(ctx, v, v1) } || makesLeftTurn.holds(ctx, v) ||  v.lane.laneId >= v.lane.road.lanes.map { l -> l.laneId }.max()
+        }
+    }
+
+fun distanceToLaneCenter(v:Vehicle):Double {
+    val laneMidpoint = v.lane.laneMidpoints.find {it.distanceToStart == v.positionOnLane}
+    if (laneMidpoint != null) {
+        val locationOfCenter = laneMidpoint.location;
+        val locationOfVehicle = v.location;
+        return sqrt((locationOfCenter.x - locationOfVehicle.x) * (locationOfCenter.x - locationOfVehicle.x) + (locationOfCenter.y - locationOfVehicle.y) * (locationOfCenter.y - locationOfVehicle.y))
+    }
+    throw RuntimeException("could not find laneMidpoint to calculate distanceToLaneCenter")
+}
+
+
+val drivesAtCenterOfLane =
+    predicate(Vehicle::class) { ctx, v ->
+        globally(v) { v0 -> changedLane.holds(ctx, v0) || distanceToLaneCenter(v) <= v0.lane.laneWidth / 4}
+    }
+
+/**
+ * In the city: 1 sec of driving at the current speed
+ */
+fun minDistanceToLeadingVehicle(v:Vehicle):Double {
+    return v.effVelocityInMPerS;
+}
+
+val keepsDistanceToLeadingVehicle =
+    predicate(Vehicle::class) { ctx, v ->
+        globally(v) {
+            v.tickData.vehicles.any { v1 ->
+                if (behind.holds(ctx, v, v1)) v1.positionOnLane - v.positionOnLane >= minDistanceToLeadingVehicle(v)
+                else true
+            }
+        }
+    }
+
+/** [Vehicle] v0 and [Vehicle] v1 collided */
+val noCollisions =
+    predicate(Vehicle::class to Vehicle::class) {ctx, v0, v1 ->
+        globally(v0, v1) { v0, v1 ->
+            onSameLane.holds(ctx, v0, v1) && (v0.positionOnLane - v1.positionOnLane) > 1
+        }
+    }
+
 
 // endregion
