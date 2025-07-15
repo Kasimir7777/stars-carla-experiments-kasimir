@@ -455,11 +455,15 @@ val keepsDistanceToLeadingVehicle =
         }
     }
 
+fun distanceBetweenTwoLocations(l0:Location, l1:Location):Double {
+    return sqrt((l0.x - l1.x).pow(2) + (l0.y - l1.y).pow(2));
+}
+
 /** [Vehicle] v0 and [Vehicle] v1 collided */
 val noCollisions =
     predicate("noCollisions", Vehicle::class to Vehicle::class) {ctx, v0, v1 ->
         globally(v0, v1) { v0, v1 ->
-            onSameLane.holds(ctx, v0, v1) && (v0.positionOnLane - v1.positionOnLane) > 1
+            distanceBetweenTwoLocations(v0.location, v1.location) > 2;
         }
     }
 
