@@ -594,4 +594,67 @@ val keepsLateralDistanceWhileOvertaking =
         }
     }
 
+fun isDuringOvertaking(tick:TickDataUnitSeconds, v0:Vehicle, v1:Vehicle, ctx:PredicateContext<Actor, TickData, Segment, TickDataUnitSeconds, TickDataDifferenceSeconds>) : Boolean {
+    var start = v0.tickData.currentTick;
+    var end = v0.tickData.currentTick;
+
+    if (eventually(v0, v1) { v0, v1 ->
+            isBehind.holds(ctx, v0, v1) &&
+                    bothOver10MPH.holds(ctx, v0, v1) &&
+                    next(v0, v1) { v0, v1 ->
+                        until(
+                            v0,
+                            v1,
+                            phi1 = { v0, v1 ->
+                                isBehind.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                            },
+                            phi2 = { v0, v1 ->
+                                start = v0.tickData.currentTick;
+                                besides.holds(ctx, v0, v1) &&
+                                        bothOver10MPH.holds(ctx, v0, v1) &&
+                                        next(v0, v1) { v0, v1 ->
+                                            until(
+                                                v0,
+                                                v1,
+                                                phi1 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                },
+                                                phi2 = { v0, v1 ->
+                                                    end = v0.tickData.currentTick;
+                                                    isBehind.holds(ctx, v1, v0) && bothOver10MPH.holds(ctx, v0, v1)
+                                                })
+                                        }
+                            })
+                    }
+
+        }) {
+        return start.tickSeconds < tick.tickSeconds && tick.tickSeconds < end.tickSeconds;
+    } else {
+        return false;
+    }
+}
+
+val overtakingWithSpeedDifference =
+    predicate("overtaking with speed difference", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        globally(v0, v1) { v0, v1 ->
+            !isDuringOvertaking(v0.tickData.currentTick, v0, v1, ctx) || (v0.effVelocityInKmPH - v1.effVelocityInKmPH >= 10)
+        }
+    }
+
+val noOpposingTrafficDuringOvertaking =
+    predicate("no opposing traffic during overtaking", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        globally(v0, v1) { v0, v1 ->
+            !isDuringOvertaking(v0.tickData.currentTick, v0, v1, ctx) || (v0.effVelocityInKmPH - v1.effVelocityInKmPH >= 10)
+        }
+    }
+
+val noAccelerationWhileBeingOvertaken =
+    predicate("No acceleration while being overtaken", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        globally(v0, v1) { v0, v1 ->
+            !isDuringOvertaking(v0.tickData.currentTick, v0, v1, ctx) || (next(v1) {v1NextTick ->
+                (v1.effVelocityInKmPH >= v1NextTick.effVelocityInKmPH)
+            })
+        }
+    }
+
 // endregion

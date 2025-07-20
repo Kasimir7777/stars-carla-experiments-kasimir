@@ -60,7 +60,7 @@ class ExperimentConfiguration : CliktCommand() {
       option("--allEgo", help = "Whether to treat all vehicles as ego").flag(default = false)
 
   private val firstEgo: Boolean by
-      option("--firstEgo", help = "Whether to treat the first vehicle as ego").flag(default = false)
+      option("--firstEgo", help = "Whether to treat the first vehicle as ego").flag(default = true)
 
   private val minSegmentTickCount: Int by
       option("--minSegmentTicks", help = "Minimum ticks per segment").int().default(11)
