@@ -414,14 +414,6 @@ val makesLeftTurn =
 val makesNoTurn =
     predicate("makesNoTurn", Vehicle::class) { _, v -> minPrevalence(v, 0.8) { v -> v.lane.isStraight } }
 
-
-val obeysKeepRightRule =
-    predicate("obeysKeepRightRule", Vehicle::class) { ctx, v ->
-        globally(v) { v ->
-            v.tickData.vehicles.any { v1 -> overtaking.holds(ctx, v, v1) } || makesLeftTurn.holds(ctx, v) ||  v.lane.laneId >= v.lane.road.lanes.map { l -> l.laneId }.max()
-        }
-    }
-
 fun distanceToLaneCenter(v:Vehicle):Double {
     val laneMidpoint = v.lane.laneMidpoints.find {it.distanceToStart == v.positionOnLane}
     if (laneMidpoint != null) {
@@ -433,11 +425,6 @@ fun distanceToLaneCenter(v:Vehicle):Double {
 }
 
 
-val drivesAtCenterOfLane =
-    predicate("drivesAtCenterOfLane", Vehicle::class) { ctx, v ->
-        globally(v) { v0 -> changedLane.holds(ctx, v0) || distanceToLaneCenter(v) <= v0.lane.laneWidth / 4}
-    }
-
 /**
  * In the city: 1 sec of driving at the current speed
  */
@@ -445,15 +432,6 @@ fun minDistanceToLeadingVehicle(v:Vehicle):Double {
     return v.effVelocityInMPerS;
 }
 
-val keepsDistanceToLeadingVehicle =
-    predicate("keepsDistanceToLeadingVehicle", Vehicle::class) { ctx, v ->
-        globally(v) {
-            v.tickData.vehicles.any { v1 ->
-                if (behind.holds(ctx, v, v1)) v1.positionOnLane - v.positionOnLane >= minDistanceToLeadingVehicle(v)
-                else true
-            }
-        }
-    }
 
 fun distanceBetweenTwoLocations(l0:Location, l1:Location):Double {
     return sqrt((l0.x - l1.x).pow(2) + (l0.y - l1.y).pow(2));
@@ -489,13 +467,6 @@ fun lateralDistance(v0:Vehicle, v1:Vehicle):Double {
     throw RuntimeException("could not find laneMidpoint to calculate distanceToLaneCenter")
 }
 
-val enoughLateralDistance =
-    predicate("enoughLateralDistance", Vehicle::class to Vehicle::class) {ctx, v0, v1 ->
-        globally(v0, v1) { v0, v1 ->
-            lateralDistance(v0, v1) >= 1.5;
-        }
-    }
-
 /**
  * if a car is overtaking another car, the minimal lateral distance must be kept.
  */
@@ -514,28 +485,11 @@ val obeysKeepRightRule =
         }
     }
 
-fun distanceToLaneCenter(v:Vehicle):Double {
-    val laneMidpoint = v.lane.laneMidpoints.find {it.distanceToStart == v.positionOnLane}
-    if (laneMidpoint != null) {
-        val locationOfCenter = laneMidpoint.location;
-        val locationOfVehicle = v.location;
-        return sqrt((locationOfCenter.x - locationOfVehicle.x) * (locationOfCenter.x - locationOfVehicle.x) + (locationOfCenter.y - locationOfVehicle.y) * (locationOfCenter.y - locationOfVehicle.y))
-    }
-    throw RuntimeException("could not find laneMidpoint to calculate distanceToLaneCenter")
-}
-
 
 val drivesAtCenterOfLane =
     predicate("drivesAtCenterOfLane", Vehicle::class) { ctx, v ->
         globally(v) { v0 -> changedLane.holds(ctx, v0) || distanceToLaneCenter(v) <= v0.lane.laneWidth / 4}
     }
-
-/**
- * In the city: 1 sec of driving at the current speed
- */
-fun minDistanceToLeadingVehicle(v:Vehicle):Double {
-    return v.effVelocityInMPerS;
-}
 
 val keepsDistanceToLeadingVehicle =
     predicate("keepsDistanceToLeadingVehicle", Vehicle::class) { ctx, v ->
@@ -547,36 +501,6 @@ val keepsDistanceToLeadingVehicle =
         }
     }
 
-/** [Vehicle] v0 and [Vehicle] v1 collided */
-val noCollisions =
-    predicate("noCollisions", Vehicle::class to Vehicle::class) {ctx, v0, v1 ->
-        globally(v0, v1) { v0, v1 ->
-            onSameLane.holds(ctx, v0, v1) && (v0.positionOnLane - v1.positionOnLane) > 1
-        }
-    }
-
-fun lateralDistance(v0:Vehicle, v1:Vehicle):Double {
-    val laneMidpoint = v0.lane.laneMidpoints.find { it.distanceToStart == v0.positionOnLane }
-    if (laneMidpoint != null) {
-        // calculate orthogonal vector to the street. Basically use rotation Matrix and then scalar product
-        val streetYaw = laneMidpoint.rotation.yaw;
-        val streetX = cos(2 * PI * streetYaw / 360) - sin(2 * PI * streetYaw / 360);
-        val streetY = sin(2 * PI * streetYaw / 360) + cos(2 * PI * streetYaw / 360);
-        val orthogonalStreetY = 1;
-        val orthogonalStreetX = -streetY / streetX;
-        // Projection of distance between the two cars on the lateral axis (so orthogonal to the street)
-        val distanceBetweenCarsX = v0.location.x - v1.location.x;
-        val distanceBetweenCarsY = v0.location.y - v1.location.y;
-        val lateralDistanceCarCenter =
-            (orthogonalStreetX * distanceBetweenCarsX + orthogonalStreetY * distanceBetweenCarsY) / sqrt(
-                orthogonalStreetX * orthogonalStreetX + orthogonalStreetY * orthogonalStreetY
-            );
-        //TODO: use bounding box to subtract exact widths of cars instead of average
-        return lateralDistanceCarCenter - 1.8
-    }
-    throw RuntimeException("could not find laneMidpoint to calculate distanceToLaneCenter")
-}
-
 val enoughLateralDistance =
     predicate("enoughLateralDistance", Vehicle::class to Vehicle::class) {ctx, v0, v1 ->
         globally(v0, v1) { v0, v1 ->
@@ -584,15 +508,6 @@ val enoughLateralDistance =
         }
     }
 
-/**
- * if a car is overtaking another car, the minimal lateral distance must be kept.
- */
-val keepsLateralDistanceWhileOvertaking =
-    predicate("Keeps lateral distance while overtaking", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
-        globally(v0, v1) { v0, v1 ->
-            !overtaking.holds(ctx, v0, v1) || enoughLateralDistance.holds(ctx, v0, v1)
-        }
-    }
 
 fun isDuringOvertaking(tick:TickDataUnitSeconds, v0:Vehicle, v1:Vehicle, ctx:PredicateContext<Actor, TickData, Segment, TickDataUnitSeconds, TickDataDifferenceSeconds>) : Boolean {
     var start = v0.tickData.currentTick;
