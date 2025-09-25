@@ -227,10 +227,22 @@ val besides =
       sameDirection.holds(ctx, v0, v1) && abs(v1.positionOnLane - v0.positionOnLane) <= 2.0
     }
 
+/** v0/v1 driving in the same direction on the same road with position on lane diff max 2.0 m. */
+val besidesAnyDirection =
+    predicate("besides", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        onSameRoad.holds(ctx, v0, v1) && abs(v1.positionOnLane - v0.positionOnLane) <= 2.0
+    }
+
 /** v0/v1 driving in the same direction on the same road with v0 more than 2.0 m behind v1. */
 val isBehind =
     predicate("isBehind", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
       sameDirection.holds(ctx, v0, v1) && (v0.positionOnLane + 2.0) < v1.positionOnLane
+    }
+
+/** v0/v1 driving in the same direction on the same road with v0 more than 2.0 m behind v1. */
+val isBehindAnyDirection =
+    predicate("isBehind", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        onSameRoad.holds(ctx, v0, v1) && (v0.positionOnLane + 2.0) < v1.positionOnLane
     }
 
 /** v0/v1 driving at speeds over 10 mph. */
@@ -525,13 +537,13 @@ val keepsLateralDistanceWhileOvertaking =
 /**
  * if a car is overtaking another car, the minimal lateral distance must be kept.
  */
-val lateralDistanceWhileOvertakingTooSmall =
+/*val lateralDistanceWhileOvertakingTooSmall =
     predicate("Lateral distance while overtaking is too small", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
         eventually(v0, v1) { v0, v1 ->
             if (hasOvertaken.holds(ctx, v0)) {
                 val v0at0: Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v0.id } as Vehicle
                 val v1at0: Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v1.id } as Vehicle
-                /*if (v0.id == 138 && v1.id == 150) {
+                *//*if (v0.id == 138 && v1.id == 150) {
                     val v0at0 = ctx.segment.tickData.first().entities.find { e -> e.id == v0.id }
                     val v1at0 = ctx.segment.tickData.first().entities.find { e -> e.id == v1.id }
                     if (v0at0 is Vehicle && v1at0 is Vehicle) {
@@ -539,7 +551,7 @@ val lateralDistanceWhileOvertakingTooSmall =
                         println("result: " + (isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && directlyBesides(v0, v1) && lateralDistance(v0, v1) < 1))
                     }
 
-                }*/
+                }*//*
                 isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && directlyBesides(
                     v0,
                     v1
@@ -547,8 +559,51 @@ val lateralDistanceWhileOvertakingTooSmall =
             }
             false
         }
-    }
+    }*/
 
+val lateralDistanceWhileOvertakingTooSmall =
+    predicate("Lateral distance while overtaking is too small", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        eventually(v0, v1) { v0, v1 ->
+            isBehind.holds(ctx, v0, v1) &&
+                    bothOver10MPH.holds(ctx, v0, v1) &&
+                    next(v0, v1) { v0, v1 ->
+                        until(
+                            v0,
+                            v1,
+                            phi1 = { v0, v1 ->
+                                isBehind.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                            },
+                            phi2 = { v0, v1 ->
+                                besides.holds(ctx, v0, v1) &&
+                                        bothOver10MPH.holds(ctx, v0, v1) &&
+                                        next(v0, v1) { v0, v1 ->
+                                            until(
+                                                v0,
+                                                v1,
+                                                phi1 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                },
+                                                phi2 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1) && lateralDistance(v0, v1) < 1 &&
+                                                    next(v0, v1) { v0, v1 ->
+                                                        until(
+                                                            v0,
+                                                            v1,
+                                                            phi1 = { v0, v1 ->
+                                                                besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                            },
+                                                            phi2 = { v0, v1 ->
+                                                                isBehind.holds(ctx, v1, v0) && bothOver10MPH.holds(ctx, v0, v1)
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        }
+                            })
+                    }
+        }
+    }
 
 val obeysKeepRightRule =
     predicate("obeysKeepRightRule", Vehicle::class) { ctx, v ->
@@ -626,18 +681,18 @@ fun isDuringOvertaking(tick:TickDataUnitSeconds, v0:Vehicle, v1:Vehicle, ctx:Pre
                             v0,
                             v1,
                             phi1 = { v0, v1 ->
-                                isBehind.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                directlyBesides(v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
                             },
                             phi2 = { v0, v1 ->
                                 start = v0.tickData.currentTick;
-                                besides.holds(ctx, v0, v1) &&
+                                directlyBesides(v0, v1) &&
                                         bothOver10MPH.holds(ctx, v0, v1) &&
                                         next(v0, v1) { v0, v1 ->
                                             until(
                                                 v0,
                                                 v1,
                                                 phi1 = { v0, v1 ->
-                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                    directlyBesides(v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
                                                 },
                                                 phi2 = { v0, v1 ->
                                                     end = v0.tickData.currentTick;
@@ -661,21 +716,65 @@ val overtakingWithSpeedDifference =
         }
     }
 
-val overtakingWithLowSpeedDifference =
+/*val overtakingWithLowSpeedDifference =
     predicate("overtaking with low speed difference", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
         eventually(v0, v1) { v0, v1 ->
             //for performance reason only do this if hasOvertaken holds
             if (hasOvertaken.holds(ctx, v0)) {
                 val v0at0 : Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v0.id } as Vehicle
                 val v1at0 : Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v1.id } as Vehicle
-                /*if (v0.id == 138 && v1.id == 144) {
+                *//*if (v0.id == 138 && v1.id == 144) {
                     println("tick: " + v0.tickData.currentTick + " v0: " + v0.id + " " + v0.effVelocityInMPH + " v1: " + v1.id + " " + v1.effVelocityInMPH + " has overtaken: " + hasOvertaken.holds(ctx, v0) + " during overtaking: " + isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) + " speed difference: " + abs(v0.effVelocityInKmPH - v1.effVelocityInKmPH))
                     println("is behind: " + isBehind.holds(ctx, v0, v1) + " besides: " + besides.holds(ctx, v0, v1) + " in front: " + isBehind.holds(ctx, v1, v0) + " both over 10mph: " + bothOver10MPH.holds(ctx, v0, v1))
                     println("result: " + (isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && (abs(v0.effVelocityInKmPH - v1.effVelocityInKmPH) < 10)))
-                }*/
+                }*//*
                 isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && (abs(v0.effVelocityInKmPH - v1.effVelocityInKmPH) < 10)
             }
             false
+        }
+    }*/
+
+val overtakingWithLowSpeedDifference =
+    predicate("overtaking with low speed difference", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        eventually(v0, v1) { v0, v1 ->
+            isBehind.holds(ctx, v0, v1) &&
+                    bothOver10MPH.holds(ctx, v0, v1) &&
+                    next(v0, v1) { v0, v1 ->
+                        until(
+                            v0,
+                            v1,
+                            phi1 = { v0, v1 ->
+                                isBehind.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                            },
+                            phi2 = { v0, v1 ->
+                                besides.holds(ctx, v0, v1) &&
+                                        bothOver10MPH.holds(ctx, v0, v1) &&
+                                        next(v0, v1) { v0, v1 ->
+                                            until(
+                                                v0,
+                                                v1,
+                                                phi1 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                },
+                                                phi2 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1) && (abs(v0.effVelocityInKmPH - v1.effVelocityInKmPH) < 10) &&
+                                                            next(v0, v1) { v0, v1 ->
+                                                                until(
+                                                                    v0,
+                                                                    v1,
+                                                                    phi1 = { v0, v1 ->
+                                                                        besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                                    },
+                                                                    phi2 = { v0, v1 ->
+                                                                        isBehind.holds(ctx, v1, v0) && bothOver10MPH.holds(ctx, v0, v1)
+                                                                    }
+                                                                )
+                                                            }
+                                                }
+                                            )
+                                        }
+                            })
+                    }
         }
     }
 
@@ -689,17 +788,59 @@ val noOpposingTrafficDuringOvertaking =
 val opposingTrafficDuringOvertaking =
     predicate("Opposing traffic during overtaking", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
         eventually(v0, v1) { v0, v1 ->
-            if (hasOvertaken.holds(ctx, v0)) {
-                val v0at0 : Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v0.id } as Vehicle
-                val v1at0 : Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v1.id } as Vehicle
-                /*if (v0.id == 138 && v1.id == 150) {
-                    println("tick: " + v0.tickData.currentTick + " v0: " + v0.id + " v1: " + v1.id + " overtaking: " + isDuringOvertaking(v0.tickData.currentTick, v0, v1, ctx) + " opposing traffic: " + (v0.tickData.vehicles.any { v2 -> onSameLane.holds(ctx, v0, v2) && v1.lane.laneId.sign != v2.lane.laneId.sign}))
-                }*/
-                isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && v0.tickData.vehicles.any { v2 -> onSameLane.holds(ctx, v0, v2) && v1.lane.laneId.sign != v2.lane.laneId.sign}
+            val v0at0 : Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v0.id } as Vehicle
+            val v1at0 : Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v1.id } as Vehicle
+            if (v0.id == 138 && v1.id == 150) {
+                println("tick: " + v0.tickData.currentTick + " v0: " + v0.id + " v1: " + v1.id + " overtaking: " + isDuringOvertaking(v0.tickData.currentTick, v0, v1, ctx) + " opposing traffic: " + (v0.tickData.vehicles.any { v2 -> onSameLane.holds(ctx, v0, v2) && v1.lane.laneId.sign != v2.lane.laneId.sign}))
+                println("is behind: " + isBehindAnyDirection.holds(ctx, v0, v1) + " v0 road pol: " + v0.lane.road.id + " " + v0.positionOnLane + " v1 road pol: " + v1.lane.road.id + " " + v1.positionOnLane + " besides: " + besidesAnyDirection.holds(ctx, v0, v1) + " longitudinal distance: " + longitudinalDistance(v0, v1) +  " in front: " + isBehind.holds(ctx, v1, v0) + " both over 10mph: " + bothOver10MPH.holds(ctx, v0, v1))
             }
-            false
+            isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && v0.tickData.vehicles.any { v2 -> onSameLane.holds(ctx, v0, v2) && v1.lane.laneId.sign != v2.lane.laneId.sign}
         }
     }
+
+/*val opposingTrafficDuringOvertaking =
+    predicate("Opposing traffic during overtaking", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        eventually(v0, v1) { v0, v1 ->
+            isBehind.holds(ctx, v0, v1) &&
+                    bothOver10MPH.holds(ctx, v0, v1) &&
+                    next(v0, v1) { v0, v1 ->
+                        until(
+                            v0,
+                            v1,
+                            phi1 = { v0, v1 ->
+                                isBehind.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                            },
+                            phi2 = { v0, v1 ->
+                                besides.holds(ctx, v0, v1) &&
+                                        bothOver10MPH.holds(ctx, v0, v1) &&
+                                        next(v0, v1) { v0, v1 ->
+                                            until(
+                                                v0,
+                                                v1,
+                                                phi1 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                },
+                                                phi2 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1) && v0.tickData.vehicles.any { v2 -> onSameLane.holds(ctx, v0, v2) && v1.lane.laneId.sign != v2.lane.laneId.sign} &&
+                                                            next(v0, v1) { v0, v1 ->
+                                                                until(
+                                                                    v0,
+                                                                    v1,
+                                                                    phi1 = { v0, v1 ->
+                                                                        besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                                    },
+                                                                    phi2 = { v0, v1 ->
+                                                                        isBehind.holds(ctx, v1, v0) && bothOver10MPH.holds(ctx, v0, v1)
+                                                                    }
+                                                                )
+                                                            }
+                                                }
+                                            )
+                                        }
+                            })
+                    }
+        }
+    }*/
 
 val noAccelerationWhileBeingOvertaken =
     predicate("No acceleration while being overtaken", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
@@ -710,23 +851,68 @@ val noAccelerationWhileBeingOvertaken =
         }
     }
 
-val accelerationWhileBeingOvertaken =
+/*val accelerationWhileBeingOvertaken =
     predicate("Acceleration while being overtaken", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
         eventually(v0, v1) { v0, v1 ->
             if (hasOvertaken.holds(ctx, v0)) {
                 val v0at0: Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v0.id } as Vehicle
                 val v1at0: Vehicle = ctx.segment.tickData.first().entities.find { e -> e.id == v1.id } as Vehicle
-                /*if (v0.id == 138 && v1.id == 144) {
+                *//*if (v0.id == 138 && v1.id == 144) {
                     println("tick: " + v0.tickData.currentTick + " v0: " + v0.id + " " + v0.effVelocityInMPH + " v1: " + v1.id + " " + v1.effVelocityInMPH + " has overtaken: " + hasOvertaken.holds(ctx, v0) + " during overtaking: " + isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) + " acceleration: " + (next(v1) {v1NextTick ->
                         (v1NextTick.effVelocityInKmPH - v1.effVelocityInKmPH > 3)}) + " acceleration: " + v1.effAccelerationInMPerSSquared)
                     println("is behind: " + isBehind.holds(ctx, v0, v1) + " besides: " + besides.holds(ctx, v0, v1) + " in front: " + isBehind.holds(ctx, v1, v0) + " both over 10mph: " + bothOver10MPH.holds(ctx, v0, v1))
                     println("result: " + (isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && (abs(v0.effVelocityInKmPH - v1.effVelocityInKmPH) < 10)))
-                }*/
+                }*//*
                 isDuringOvertaking(v0.tickData.currentTick, v0at0, v1at0, ctx) && (next(v1) { v1NextTick ->
                     (v1NextTick.effVelocityInKmPH - v1.effVelocityInKmPH > 3)
                 })
             }
             false
+        }
+    }*/
+
+val accelerationWhileBeingOvertaken =
+    predicate("Acceleration while being overtaken", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
+        eventually(v0, v1) { v0, v1 ->
+            isBehind.holds(ctx, v0, v1) &&
+                    bothOver10MPH.holds(ctx, v0, v1) &&
+                    next(v0, v1) { v0, v1 ->
+                        until(
+                            v0,
+                            v1,
+                            phi1 = { v0, v1 ->
+                                isBehind.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                            },
+                            phi2 = { v0, v1 ->
+                                besides.holds(ctx, v0, v1) &&
+                                        bothOver10MPH.holds(ctx, v0, v1) &&
+                                        next(v0, v1) { v0, v1 ->
+                                            until(
+                                                v0,
+                                                v1,
+                                                phi1 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                },
+                                                phi2 = { v0, v1 ->
+                                                    besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1) && (next(v1) { v1NextTick ->
+                                                        (v1NextTick.effVelocityInKmPH - v1.effVelocityInKmPH > 3)}) &&
+                                                            next(v0, v1) { v0, v1 ->
+                                                                until(
+                                                                    v0,
+                                                                    v1,
+                                                                    phi1 = { v0, v1 ->
+                                                                        besides.holds(ctx, v0, v1) && bothOver10MPH.holds(ctx, v0, v1)
+                                                                    },
+                                                                    phi2 = { v0, v1 ->
+                                                                        isBehind.holds(ctx, v1, v0) && bothOver10MPH.holds(ctx, v0, v1)
+                                                                    }
+                                                                )
+                                                            }
+                                                }
+                                            )
+                                        }
+                            })
+                    }
         }
     }
 
