@@ -54,13 +54,13 @@ class ExperimentConfiguration : CliktCommand() {
   // region command line options
   private val defaultSimulationRunFolder: String by
       option("--input", help = "Directory of the input files")
-          .default("./stars-reproduction-source/stars-experiments-data/simulation_runs")
+          .default("./data_from_kasimir/testfixedmonitors")
 
   private val allEgo: Boolean by
-      option("--allEgo", help = "Whether to treat all vehicles as ego").flag(default = false)
+      option("--allEgo", help = "Whether to treat all vehicles as ego").flag(default = true)
 
   private val firstEgo: Boolean by
-      option("--firstEgo", help = "Whether to treat the first vehicle as ego").flag(default = true)
+      option("--firstEgo", help = "Whether to treat the first vehicle as ego").flag(default = false)
 
   private val minSegmentTickCount: Int by
       option("--minSegmentTicks", help = "Minimum ticks per segment").int().default(11)
@@ -83,13 +83,13 @@ class ExperimentConfiguration : CliktCommand() {
           .default(listOf())
 
   private val writePlots: Boolean by
-      option("--writePlots", help = "Whether to write plots").flag(default = false)
+      option("--writePlots", help = "Whether to write plots").flag(default = true)
 
   private val writePlotDataCSV: Boolean by
-      option("--writePlotData", help = "Whether to write plot data to csv").flag(default = false)
+      option("--writePlotData", help = "Whether to write plot data to csv").flag(default = true)
 
   private val writeSerializedResults: Boolean by
-      option("--saveResults", help = "Whether to save serialized results").flag(default = false)
+      option("--saveResults", help = "Whether to save serialized results").flag(default = true)
 
   private val compareToBaselineResults: Boolean by
       option(
@@ -165,6 +165,7 @@ class ExperimentConfiguration : CliktCommand() {
     println("-----------------")
 
     println("Loading simulation runs...")
+
     val simulationRunsWrappers =
         getSimulationRuns(defaultSimulationRunFolder, staticFilter, dynamicFilter)
 
