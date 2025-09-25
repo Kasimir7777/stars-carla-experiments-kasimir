@@ -48,7 +48,6 @@ fun tsc() =
         }
 
         monitors {
-          monitor("Broke keep right rule") { ctx -> obeysKeepRightRule.holds(ctx) }
           monitor("Exceeded speed limit") { ctx -> obeyedSpeedLimit.holds(ctx) }
           monitor("Exceeded speed limit by more than 10%") { ctx -> obeyed110SpeedLimit.holds(ctx) }
           monitor("Exceeded speed limit by more than 30%") { ctx -> obeyed130SpeedLimit.holds(ctx) }
@@ -56,8 +55,8 @@ fun tsc() =
           monitor("Doesnt drive at the center of the lane") {ctx -> drivesAtCenterOfLane.holds(ctx) }
           monitor("Breaks keep right rule") {ctx -> !breaksKeepRightRule.holds(ctx) }
           monitor("Vehicles collided") { ctx -> !ctx.entityIds.any { otherVehicleId -> collision.holds(ctx, entityId2 = otherVehicleId) } }
-          monitor("Crossed red light") { ctx -> !didCrossRedLight.holds(ctx) }
           monitor("Distance to leading vehicle to small") {ctx -> !distanceToLeadingVehicleTooSmall.holds(ctx) }
+
         }
 
         exclusive("Weather") {
@@ -178,9 +177,9 @@ fun tsc() =
                 monitors {
                   monitor("Right Overtaking") { ctx -> noRightOvertaking.holds(ctx) }
                   monitor("Overtook with low speed difference") { ctx -> !ctx.entityIds.any { otherVehicleId -> overtakingWithLowSpeedDifference.holds(ctx, entityId2 = otherVehicleId) } }
-                  monitor("Overtook with oncoming traffic") { ctx -> !ctx.entityIds.any { otherVehicleId -> opposingTrafficDuringOvertaking.holds(ctx, entityId2 = otherVehicleId) } }
                   monitor("Overtook with too small lateral distance") { ctx -> !ctx.entityIds.any { otherVehicleId -> lateralDistanceWhileOvertakingTooSmall.holds(ctx, entityId2 = otherVehicleId) } }
                   monitor("Accellerated while being overtaken") { ctx -> !ctx.entityIds.any { otherVehicleId -> accelerationWhileBeingOvertaken.holds(ctx, entityId2 = otherVehicleId) } }
+                  //monitor("Overtook with oncoming traffic") { ctx -> !ctx.entityIds.any { otherVehicleId -> opposingTrafficDuringOvertaking.holds(ctx, entityId2 = otherVehicleId) } }
                 }
               }
               leaf("Pedestrian Crossed") {
