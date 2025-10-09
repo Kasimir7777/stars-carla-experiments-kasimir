@@ -616,10 +616,11 @@ val obeysKeepRightRule =
 
 val breaksKeepRightRule =
     predicate("breaksKeepRightRule", Vehicle::class) { ctx, v ->
+        v.tickData.vehicles.none { v1 -> overtaking.holds(ctx, v, v1) } && !makesLeftTurn.holds(ctx, v) &&
         eventually(v) { v ->
             val drivingLanes = v.lane.road.lanes.filter { lane -> lane.laneType == LaneType.Driving }
             val absRightLaneId = if (v.lane.laneId < 0) abs(drivingLanes.map { l -> l.laneId }.min()) else abs(drivingLanes.map { l -> l.laneId }.max())
-            v.tickData.vehicles.none { v1 -> overtaking.holds(ctx, v, v1) } && !makesLeftTurn.holds(ctx, v) &&  abs(v.lane.laneId) < absRightLaneId
+            abs(v.lane.laneId) < absRightLaneId
         }
     }
 
