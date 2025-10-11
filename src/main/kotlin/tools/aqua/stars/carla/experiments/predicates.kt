@@ -449,7 +449,7 @@ fun distanceToLaneCenter(v:Vehicle):Double {
         val locationOfVehicle = v.location;
         return sqrt((locationOfCenter.x - locationOfVehicle.x) * (locationOfCenter.x - locationOfVehicle.x) + (locationOfCenter.y - locationOfVehicle.y) * (locationOfCenter.y - locationOfVehicle.y))
     }
-    throw RuntimeException("could not find laneMidpoint to calculate distanceToLaneCenter")
+    return 0.0
 }
 
 
@@ -457,6 +457,13 @@ fun distanceToLaneCenter(v:Vehicle):Double {
  * In the city: 1 sec of driving at the current speed
  */
 fun minDistanceToLeadingVehicle(v:Vehicle):Double {
+    /*if (v.effVelocityInKmPH < 10) {
+        return 0.5
+    } else if (v.effVelocityInKmPH <= 50) {
+        return v.effVelocityInMPerS;
+    } else {
+        return 2 * v.effVelocityInMPerS;
+    }*/
     return v.effVelocityInMPerS;
 }
 
@@ -478,9 +485,14 @@ val noCollisions =
 val collision =
     predicate("collisions", Vehicle::class to Vehicle::class) {ctx, v0, v1 ->
         eventually(v0, v1) { v0, v1 ->
+
             /*println("tick: " + v0.tickData.currentTick + " lateral distance: " + lateralDistance(v0, v1) + " longitudinal distance: " + longitudinalDistance(v0, v1))
-            println("result: " + (lateralDistance(v0, v1) <= 0 && longitudinalDistance(v0, v1) <= 0))*/
+            println("calculated distance between vehicles: " + distanceTwoBoundingBoxes(v0, v1))
+            println("result bounding boxes: " + (distanceTwoBoundingBoxes(v0, v1) < 0.1))*/
+
+            //println("result: " + (lateralDistance(v0, v1) <= 0 && longitudinalDistance(v0, v1) <= 0))
             lateralDistance(v0, v1) <= 0 && longitudinalDistance(v0, v1) <= 0;
+            //distanceTwoBoundingBoxes(v0, v1) < 0.1
         }
     }
 
@@ -521,7 +533,137 @@ fun longitudinalDistance(v0:Vehicle, v1:Vehicle):Double {
         //TODO: use bounding box to subtract exact length of cars instead of average
         return abs((longitudinalDistanceCarCenter - 5).coerceAtLeast(0.0))
     }
-    throw RuntimeException("could not find laneMidpoint to calculate distanceToLaneCenter")
+    return Double.MAX_VALUE
+}
+
+fun getHalfWidth(vehicleTypeId: String):Double {
+    when (vehicleTypeId) {
+        "vehicle.audi.a2" -> return 1.852685
+        "vehicle.audi.etron" -> return 2.427854
+        "vehicle.audi.tt" -> return 2.090605
+        "vehicle.bh.crossbike" -> return 0.754661
+        "vehicle.bmw.grandtourer" -> return 2.305503
+        "vehicle.carlamotors.carlacola" -> return 2.601919
+        "vehicle.carlamotors.european_hgv" -> return 3.967855
+        "vehicle.carlamotors.firetruck" -> return 4.234021
+        "vehicle.chevrolet.impala" -> return 2.678740
+        "vehicle.citroen.c3" -> return 1.993842
+        "vehicle.diamondback.century" -> return 0.828122
+        "vehicle.dodge.charger_2020" -> return 2.503913
+        "vehicle.dodge.charger_police" -> return 2.487122
+        "vehicle.dodge.charger_police_2020" -> return 2.618757
+        "vehicle.ford.ambulance" -> return 3.182822
+        "vehicle.ford.crown" -> return 2.682839
+        "vehicle.ford.mustang" -> return 2.358763
+        "vehicle.gazelle.omafiets" -> return 0.921721
+        "vehicle.harley-davidson.low_rider" -> return 1.175088
+        "vehicle.jeep.wrangler_rubicon" -> return 1.933110
+        "vehicle.kawasaki.ninja" -> return 1.021842
+        "vehicle.lincoln.mkz_2017" -> return 2.450842
+        "vehicle.lincoln.mkz_2020" -> return 2.446191
+        "vehicle.mercedes.coupe" -> return 2.513388
+        "vehicle.mercedes.coupe_2020" -> return 2.336819
+        "vehicle.mercedes.sprinter" -> return 2.957595
+        "vehicle.micro.microlino" -> return 1.103648
+        "vehicle.mini.cooper_s" -> return 1.902900
+        "vehicle.mini.cooper_s_2021" -> return 2.276350
+        "vehicle.mitsubishi.fusorosa" -> return 5.136343
+        "vehicle.nissan.micra" -> return 1.816688
+        "vehicle.nissan.patrol" -> return 2.302255
+        "vehicle.nissan.patrol_2021" -> return 2.782914
+        "vehicle.seat.leon" -> return 2.096415
+        "vehicle.tesla.cybertruck" -> return 3.136777
+        "vehicle.tesla.model3" -> return 2.395890
+        "vehicle.toyota.prius" -> return 2.256761
+        "vehicle.vespa.zx125" -> return 0.908553
+        "vehicle.volkswagen.t2" -> return 2.240218
+        "vehicle.volkswagen.t2_2021" -> return 2.221092
+        "vehicle.yamaha.yzf" -> return 1.095384
+
+    }
+    throw RuntimeException("unknown vehicle type during check of bounding box")
+}
+
+fun getHalfHeight(vehicleTypeId: String):Double {
+    when (vehicleTypeId) {
+        "vehicle.audi.a2" -> return 0.894339
+        "vehicle.audi.etron" -> return 1.016378
+        "vehicle.audi.tt" -> return 0.997059
+        "vehicle.bh.crossbike" -> return 0.432970
+        "vehicle.bmw.grandtourer" -> return 1.120857
+        "vehicle.carlamotors.carlacola" -> return 1.313495
+        "vehicle.carlamotors.european_hgv" -> return 1.445544
+        "vehicle.carlamotors.firetruck" -> return 1.445544
+        "vehicle.chevrolet.impala" -> return 1.016601
+        "vehicle.citroen.c3" -> return 0.925424
+        "vehicle.diamondback.century" -> return 0.291219
+        "vehicle.dodge.charger_2020" -> return 0.940811
+        "vehicle.dodge.charger_police" -> return 1.019201
+        "vehicle.dodge.charger_police_2020" -> return 0.964880
+        "vehicle.ford.ambulance" -> return 1.175587
+        "vehicle.ford.crown" -> return 0.900362
+        "vehicle.ford.mustang" -> return 0.947413
+        "vehicle.gazelle.omafiets" -> return 0.329521
+        "vehicle.harley-davidson.low_rider" -> return 0.383117
+        "vehicle.jeep.wrangler_rubicon" -> return 0.952598
+        "vehicle.kawasaki.ninja" -> return 0.398456
+        "vehicle.lincoln.mkz_2017" -> return 1.064162
+        "vehicle.lincoln.mkz_2020" -> return 0.918357
+        "vehicle.mercedes.coupe" -> return 1.075773
+        "vehicle.mercedes.coupe_2020" -> return 0.905906
+        "vehicle.mercedes.sprinter" -> return 0.994216
+        "vehicle.micro.microlino" -> return 0.740460
+        "vehicle.mini.cooper_s" -> return 0.985138
+        "vehicle.mini.cooper_s_2021" -> return 1.048536
+        "vehicle.mitsubishi.fusorosa" -> return 1.972076
+        "vehicle.nissan.micra" -> return 0.922557
+        "vehicle.nissan.patrol" -> return 0.965796
+        "vehicle.nissan.patrol_2021" -> return 1.074983
+        "vehicle.seat.leon" -> return 0.908093
+        "vehicle.tesla.cybertruck" -> return 1.194787
+        "vehicle.tesla.model3" -> return 1.081725
+        "vehicle.toyota.prius" -> return 1.003407
+        "vehicle.vespa.zx125" -> return 0.432970
+        "vehicle.volkswagen.t2" -> return 1.034658
+        "vehicle.volkswagen.t2_2021" -> return 0.887283
+        "vehicle.yamaha.yzf" -> return 0.432959
+
+    }
+
+    throw RuntimeException("unknown vehicle type during check of bounding box")
+}
+
+fun distanceTwoBoundingBoxes(v0:Vehicle, v1:Vehicle):Double {
+    val v0yaw = v0.rotation.yaw
+    val v1yaw = v1.rotation.yaw
+    val distanceBetweenCarsX = abs(v0.location.x - v1.location.x);
+    val distanceBetweenCarsY = abs(v0.location.y - v1.location.y);
+    val distanceBetweenCarCenters = Pair(distanceBetweenCarsX, distanceBetweenCarsY)
+
+    val heightV0 = getHalfHeight(v0.typeId)
+    val widthV0 = getHalfWidth(v0.typeId) + 0.1
+    val heightV1 = getHalfHeight(v1.typeId)
+    val widthV1 = getHalfWidth(v1.typeId) + 0.1
+    //println("height v0: " + heightV0 + " width v0:" + widthV0 + " height v1: " + heightV1 + " width v1: " + widthV1)
+
+    val v0widthAxis = Pair(cos(2 * PI * v0yaw / 360), sin(2 * PI * v0yaw / 360))
+    val v0heightAxis = Pair(-sin(2 * PI * v0yaw / 360), cos(2 * PI * v0yaw / 360))
+    val v1widthAxis = Pair(cos(2 * PI * v1yaw / 360), sin(2 * PI * v1yaw / 360))
+    val v1heightAxis = Pair(-sin(2 * PI * v1yaw / 360), cos(2 * PI * v1yaw / 360))
+
+    val axes = listOf(v0widthAxis, v0heightAxis, v1widthAxis, v1heightAxis)
+    var gap = 0.0
+
+    for (axis in axes) {
+        val projectedDistanceBetweenCarCenters = abs(distanceBetweenCarCenters.first * axis.first + distanceBetweenCarCenters.second * axis.second)
+        val radius1 = heightV0 * abs(axis.first * v0heightAxis.first + axis.second * v0heightAxis.second) + widthV0 * abs(axis.first * v0widthAxis.first + axis.second * v0widthAxis.second)
+        val radius2 = heightV1 * abs(axis.first * v1heightAxis.first + axis.second * v1heightAxis.second) + widthV1 * abs(axis.first * v1widthAxis.first + axis.second * v1widthAxis.second)
+        val distance = projectedDistanceBetweenCarCenters - radius1 - radius2
+        gap = max(distance, gap)
+    }
+
+    return gap
+
 }
 
 /**
@@ -619,8 +761,12 @@ val breaksKeepRightRule =
         v.tickData.vehicles.none { v1 -> overtaking.holds(ctx, v, v1) } && !makesLeftTurn.holds(ctx, v) &&
         eventually(v) { v ->
             val drivingLanes = v.lane.road.lanes.filter { lane -> lane.laneType == LaneType.Driving }
-            val absRightLaneId = if (v.lane.laneId < 0) abs(drivingLanes.map { l -> l.laneId }.min()) else abs(drivingLanes.map { l -> l.laneId }.max())
-            abs(v.lane.laneId) < absRightLaneId
+            if (drivingLanes.isNotEmpty()) {
+                val absRightLaneId = if (v.lane.laneId < 0) abs(drivingLanes.map { l -> l.laneId }.min()) else abs(drivingLanes.map { l -> l.laneId }.max())
+                abs(v.lane.laneId) < absRightLaneId
+            } else {
+                false
+            }
         }
     }
 
@@ -660,7 +806,6 @@ val enoughLateralDistance =
             if (v0.id == 138 && v1.id == 150) {
                 println("tick: " + v0.tickData.currentTick + " lateral distance: " + lateralDistance(v0, v1) + " longitudinal distance: " + longitudinalDistance(v0, v1))
             }
-
             lateralDistance(v0, v1) >= 1;
         }
     }
