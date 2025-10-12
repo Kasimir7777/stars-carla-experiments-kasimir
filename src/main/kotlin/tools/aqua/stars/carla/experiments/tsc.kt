@@ -56,6 +56,7 @@ fun tsc() =
           monitor("Breaks keep right rule") {ctx -> !breaksKeepRightRule.holds(ctx) }
           monitor("Vehicles collided") { ctx -> !ctx.entityIds.any { otherVehicleId -> collision.holds(ctx, entityId2 = otherVehicleId) } }
           monitor("Distance to leading vehicle to small") {ctx -> !distanceToLeadingVehicleTooSmall.holds(ctx) }
+          monitor("Ran over stop sign") { ctx -> !ranStopSign.holds(ctx) }
 
         }
 
@@ -275,7 +276,7 @@ fun tsc() =
 
               leaf("Has Stop Sign") {
                 condition { ctx -> hasStopSign.holds(ctx) }
-                monitors { monitor("Stopped at stop sign") { ctx -> stopAtEnd.holds(ctx) } }
+                //monitors { monitor("Ran over stop sign") { ctx -> !ranStopSign.holds(ctx) } }
               }
               leaf("Has Yield Sign") { condition { ctx -> hasYieldSign.holds(ctx) } }
               leaf("Has Red Light") {
