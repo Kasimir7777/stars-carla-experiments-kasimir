@@ -55,6 +55,7 @@ fun tsc() =
           monitor("Doesnt drive at the center of the lane") {ctx -> drivesAtCenterOfLane.holds(ctx) }
           monitor("Breaks keep right rule") {ctx -> !breaksKeepRightRule.holds(ctx) }
           monitor("Vehicles collided") { ctx -> !ctx.entityIds.any { otherVehicleId -> collision.holds(ctx, entityId2 = otherVehicleId) } }
+          monitor("Vehicle collided with pedestrian") { ctx -> !collisionWithPedestrian.holds(ctx) }
           monitor("Distance to leading vehicle to small") {ctx -> !distanceToLeadingVehicleTooSmall.holds(ctx) }
           monitor("Ran over stop sign") { ctx -> !ranStopSign.holds(ctx) }
 

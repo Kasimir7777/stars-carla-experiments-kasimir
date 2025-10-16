@@ -21,7 +21,6 @@ import kotlin.math.abs
 import kotlin.math.sign
 import tools.aqua.stars.core.evaluation.BinaryPredicate.Companion.predicate
 import tools.aqua.stars.core.evaluation.PredicateContext
-import tools.aqua.stars.core.evaluation.UnaryPredicate
 import tools.aqua.stars.core.evaluation.UnaryPredicate.Companion.predicate
 import tools.aqua.stars.data.av.dataclasses.*
 import tools.aqua.stars.logic.kcmftbl.*
@@ -512,6 +511,13 @@ val collision =
         }
     }
 
+val collisionWithPedestrian =
+    predicate("collisionWithPedestrian", Vehicle::class) {ctx, v ->
+        eventually(v) { v ->
+            v.tickData.pedestrians.any() { p -> distanceCarPedestrian(v, p) < 0.05 }
+        }
+    }
+
 fun lateralDistance(v0:Vehicle, v1:Vehicle):Double {
     val laneMidpoint = v0.lane.laneMidpoints.find { it.distanceToStart == v0.positionOnLane }
     if (laneMidpoint != null) {
@@ -527,7 +533,7 @@ fun lateralDistance(v0:Vehicle, v1:Vehicle):Double {
                 orthogonalStreetX * orthogonalStreetX + orthogonalStreetY * orthogonalStreetY
             ));
         //TODO: use bounding box to subtract exact widths of cars instead of average
-        return abs((lateralDistanceCarCenter - 1.8).coerceAtLeast(0.0))
+        return abs((lateralDistanceCarCenter - getHalfHeight(v0.typeId) - getHalfHeight(v1.typeId)).coerceAtLeast(0.0))
     }
     return Double.MAX_VALUE
 }
@@ -681,6 +687,45 @@ fun distanceTwoBoundingBoxes(v0:Vehicle, v1:Vehicle):Double {
     return gap
 
 }
+
+fun distanceCarPedestrian(v0:Vehicle, p:Pedestrian):Double {
+    //println("tick: " + p.tickData.currentTick + " p location: " + p.location + " p rotation: " + p.rotation.yaw)
+    val v0yaw = v0.rotation.yaw
+    val v1yaw = p.rotation.yaw
+    val distanceBetweenCarsX = abs(v0.location.x - p.location.x);
+    val distanceBetweenCarsY = abs(v0.location.y - p.location.y);
+    val distanceBetweenCarCenters = Pair(distanceBetweenCarsX, distanceBetweenCarsY)
+
+    val heightV0 = getHalfHeight(v0.typeId)
+    val widthV0 = getHalfWidth(v0.typeId)
+    val heightV1 = 0
+    val widthV1 = 0
+    //println("height v0: " + heightV0 + " width v0:" + widthV0 + " height v1: " + heightV1 + " width v1: " + widthV1)
+
+    val v0widthAxis = Pair(cos(2 * PI * v0yaw / 360), sin(2 * PI * v0yaw / 360))
+    val v0heightAxis = Pair(-sin(2 * PI * v0yaw / 360), cos(2 * PI * v0yaw / 360))
+    val v1widthAxis = Pair(cos(2 * PI * v1yaw / 360), sin(2 * PI * v1yaw / 360))
+    val v1heightAxis = Pair(-sin(2 * PI * v1yaw / 360), cos(2 * PI * v1yaw / 360))
+
+    val axes = listOf(v0widthAxis, v0heightAxis, v1widthAxis, v1heightAxis)
+    var gap = 0.0
+
+    for (axis in axes) {
+        val projectedDistanceBetweenCarCenters = abs(distanceBetweenCarCenters.first * axis.first + distanceBetweenCarCenters.second * axis.second)
+        val radius1 = heightV0 * abs(axis.first * v0heightAxis.first + axis.second * v0heightAxis.second) + widthV0 * abs(axis.first * v0widthAxis.first + axis.second * v0widthAxis.second)
+        val radius2 = heightV1 * abs(axis.first * v1heightAxis.first + axis.second * v1heightAxis.second) + widthV1 * abs(axis.first * v1widthAxis.first + axis.second * v1widthAxis.second)
+        val distance = projectedDistanceBetweenCarCenters - radius1 - radius2
+        gap = max(distance, gap)
+    }
+    /*if (gap < 2) {
+        println("tick: " + v0.tickData.currentTick + " v id: " + v0.id + " v location: " + v0.location + " v yaw: " + v0.rotation.yaw + " p location: " + p.location + " p yaw: " + p.rotation.yaw + " distance: " + gap)
+    }*/
+
+    return gap
+
+}
+
+
 
 val lateralDistanceWhileOvertakingTooSmall =
     predicate("Lateral distance while overtaking is too small", Vehicle::class to Vehicle::class) { ctx, v0, v1 ->
