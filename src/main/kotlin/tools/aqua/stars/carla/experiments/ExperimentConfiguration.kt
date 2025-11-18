@@ -54,7 +54,7 @@ class ExperimentConfiguration : CliktCommand() {
   // region command line options
   private val defaultSimulationRunFolder: String by
       option("--input", help = "Directory of the input files")
-          .default("./data_from_kasimir/testfixedmonitors")
+          .default("./data_from_kasimir/100v50w_with_walkers_overtaking")
 
   private val allEgo: Boolean by
       option("--allEgo", help = "Whether to treat all vehicles as ego").flag(default = true)
@@ -63,7 +63,7 @@ class ExperimentConfiguration : CliktCommand() {
       option("--firstEgo", help = "Whether to treat the first vehicle as ego").flag(default = false)
 
   private val minSegmentTickCount: Int by
-      option("--minSegmentTicks", help = "Minimum ticks per segment").int().default(11)
+      option("--minSegmentTicks", help = "Minimum ticks per segment").int().default(5)
 
   private val sortBySeed: Boolean by
       option("--sorted", help = "Whether to sort data by seed").flag(default = true)
@@ -80,13 +80,13 @@ class ExperimentConfiguration : CliktCommand() {
               help =
                   "A list of TSC projections that should be ignored (given as a String, separated by ',')")
           .split(",")
-          .default(listOf())
+          .default(listOf("full TSC", "layer 1+2", "layer 4", "layer (4)+5", "pedestrian","multi-lane-dynamic-relations"))
 
   private val writePlots: Boolean by
-      option("--writePlots", help = "Whether to write plots").flag(default = true)
+      option("--writePlots", help = "Whether to write plots").flag(default = false)
 
   private val writePlotDataCSV: Boolean by
-      option("--writePlotData", help = "Whether to write plot data to csv").flag(default = true)
+      option("--writePlotData", help = "Whether to write plot data to csv").flag(default = false)
 
   private val writeSerializedResults: Boolean by
       option("--saveResults", help = "Whether to save serialized results").flag(default = true)
@@ -202,7 +202,8 @@ class ExperimentConfiguration : CliktCommand() {
                   InvalidTSCInstancesPerTSCMetric(),
                   MissedTSCInstancesPerTSCMetric(),
                   MissedPredicateCombinationsPerTSCMetric(validTSCInstancesPerProjectionMetric),
-                  FailedMonitorsMetric(validTSCInstancesPerProjectionMetric),
+                  FailedMonitorsReducedMetric(validTSCInstancesPerProjectionMetric),
+                  //FailedMonitorsMetric(validTSCInstancesPerProjectionMetric),
               )
               println("Run Evaluation")
               runEvaluation(segments = segments)

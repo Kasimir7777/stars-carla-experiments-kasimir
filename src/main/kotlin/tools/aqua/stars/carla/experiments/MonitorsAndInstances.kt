@@ -26,8 +26,8 @@ import tools.aqua.stars.core.metric.serialization.tsc.SerializableTSCNode
 
 fun main() {
 
-    val pathMonitors = "serialized-results/100v50w_with_walkers_ignore_lights100/failed-monitors/layer 1+2+4.json"
-    val pathTsc = "serialized-results/100v50w_with_walkers_ignore_lights100/valid-tsc-instances-per-tsc/layer 1+2+4.json"
+    val pathMonitors = "serialized-results/100v50w_with_walkers_speed-100_50p/failed-monitors/layer 1+2+4.json"
+    val pathTsc = "serialized-results/100v50w_with_walkers_speed-100_50p/valid-tsc-instances-per-tsc/layer 1+2+4.json"
   val failedMonitorsResult: SerializableFailedMonitorsResult =
       loadSerializableResult(pathMonitors)
   val failedMonitors =
@@ -76,7 +76,7 @@ fun main() {
             0,
             0,
             possibleTSCInstances = 360,
-            possibleFailedMonitors = 15)
+            possibleFailedMonitors = 16)
       }
 
   var failedMonitorsCount = 0
@@ -129,6 +129,25 @@ fun writeResultsToCsv(results: List<TSCInstanceAndMonitorResultsWithCount>, outp
               .joinToString(","))
     }
   }
+
+    /*val file2 = File("serialized-results/monitor_progression.csv")
+
+    file2.printWriter().use { out ->
+        out.println(
+            "tscInstanceCount,failedMonitorsCount")
+
+        slicedResults.forEach { result ->
+            out.println(
+                listOf(
+                    result.tscInstanceCount,
+                    result.failedMonitorsCount
+                )
+                    .joinToString(",")
+            )
+        }
+    }*/
+
+
 
   println("✅ CSV written to: ${file.absolutePath}")
 }

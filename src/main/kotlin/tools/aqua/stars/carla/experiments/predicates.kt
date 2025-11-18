@@ -799,6 +799,9 @@ val drivesAtCenterOfLane =
     predicate("drivesAtCenterOfLane", Vehicle::class) { ctx, v ->
         globally(v) {
             v0 ->
+            /*if (v0.id == 205 && v0.tickData.currentTick.tickSeconds >=216 && v0.tickData.currentTick.tickSeconds <=243) {
+                println("tick: " + v0.tickData.currentTick + " road: " + v0.lane.road + " lane: " + v0.lane.laneId + " distance to lane center: " + distanceToLaneCenter(v0) + " lanewidth: " + v0.lane.laneWidth + " distanceToLaneCenter(v) <= v0.lane.laneWidth / 4: " + (distanceToLaneCenter(v0) <= v0.lane.laneWidth / 4) )
+            }*/
             changedLane.holds(ctx, v0) || distanceToLaneCenter(v) <= v0.lane.laneWidth / 4}
     }
 

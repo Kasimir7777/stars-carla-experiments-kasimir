@@ -48,6 +48,8 @@ fun main() {
         "serialized-results/100v50w_with_walkers_random_right_change100/valid-tsc-instances-per-tsc/layer 1+2+4.json"))
     validInstancesResultList.add(loadSerializableResult(
         "serialized-results/100v50w_with_walkers_bad_drivers/valid-tsc-instances-per-tsc/layer 1+2+4.json"))
+    validInstancesResultList.add(loadSerializableResult(
+        "serialized-results/100v50w_with_walkers_overtaking/valid-tsc-instances-per-tsc/layer 1+2+4.json"))
 
     val listShit : MutableList<TSCMultipleInstancesWithCount> = mutableListOf()
     val listShit2 : MutableList<TSCMultipleInstancesWithCountNoSegment> = mutableListOf()
@@ -121,7 +123,7 @@ fun main() {
         )
     }
 
-    writeMultipleInstancesResultsToCsv(slice(listShit), "serialized-results/test.csv")
+    writeMultipleInstancesResultsToCsv(slice(listShit), "serialized-results/combined_coverages.csv")
 
     val s = ""
 }
@@ -136,7 +138,7 @@ fun writeMultipleInstancesResultsToCsv(results: List<TSCMultipleInstancesWithCou
     // CSV header
     file.printWriter().use { out ->
         out.println(
-            "segmentIndex,100v50w_with_walkers_no_manipulation,100v50w_with_walkers_speed-100_50p,100v50w_with_walkers_distance_to_leading_vehicle0,100v50w_with_walkers_ignore_lights100,100v50w_with_walkers_ignore_side0505,100v50w_with_walkers_ignore_signs100,100v50w_with_walkers_ignore_vehicles100,100v50w_with_walkers_ignore_walkers100,100v50w_with_walkers_keep_right_rule100,100v50w_with_walkers_random_left_change100,100v50w_with_walkers_random_right_change100,100v50w_with_walkers_bad_drivers")
+            "segmentIndex,100v50w_with_walkers_no_manipulation,100v50w_with_walkers_speed-100_50p,100v50w_with_walkers_distance_to_leading_vehicle0,100v50w_with_walkers_ignore_lights100,100v50w_with_walkers_ignore_side0505,100v50w_with_walkers_ignore_signs100,100v50w_with_walkers_ignore_vehicles100,100v50w_with_walkers_ignore_walkers100,100v50w_with_walkers_keep_right_rule100,100v50w_with_walkers_random_left_change100,100v50w_with_walkers_random_right_change100,100v50w_with_walkers_bad_drivers,100v50w_with_walkers_overtaking")
 
         // Each row
         results.forEach { result ->
@@ -166,6 +168,8 @@ fun writeMultipleInstancesResultsToCsv(results: List<TSCMultipleInstancesWithCou
                     ((result.uniqueTSCInstancesCounts[10]?.toFloat() ?: -1f) / (result.possibleTSCInstances[10]?: 1) * 100)
                         .toInt(),
                     ((result.uniqueTSCInstancesCounts[11]?.toFloat() ?: -1f) / (result.possibleTSCInstances[11]?: 1) * 100)
+                        .toInt(),
+                    ((result.uniqueTSCInstancesCounts[12]?.toFloat() ?: -1f) / (result.possibleTSCInstances[12]?: 1) * 100)
                         .toInt(),
 
                 )

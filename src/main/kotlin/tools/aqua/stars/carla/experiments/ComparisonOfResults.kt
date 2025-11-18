@@ -9,6 +9,7 @@ import org.jetbrains.letsPlot.geom.geomBar
 import org.jetbrains.letsPlot.geom.geomHLine
 import org.jetbrains.letsPlot.letsPlot
 import org.jetbrains.letsPlot.pos.positionDodge
+import tools.aqua.stars.core.metric.serialization.SerializableFailedMonitorsWithoutTscInstanceResult
 import tools.aqua.stars.core.metric.serialization.SerializableTSCOccurrenceResult
 import tools.aqua.stars.core.metric.serialization.tsc.SerializableTSCNode
 import tools.aqua.stars.core.metric.utils.ApplicationConstantsHolder
@@ -22,6 +23,14 @@ class ComparisonOfResults {
         val json = Json { ignoreUnknownKeys = true }
         val serializableFailedMonitorsResult =
             json.decodeFromString(SerializableFailedMonitorsResult.serializer(), jsonString)
+        return serializableFailedMonitorsResult
+    }
+
+    fun loadReducedMonitorFile(path: String): SerializableFailedMonitorsWithoutTscInstanceResult {
+        val jsonString = File(path).readText(Charsets.UTF_8)
+        val json = Json { ignoreUnknownKeys = true }
+        val serializableFailedMonitorsResult =
+            json.decodeFromString(SerializableFailedMonitorsWithoutTscInstanceResult.serializer(), jsonString)
         return serializableFailedMonitorsResult
     }
 
@@ -69,6 +78,14 @@ class ComparisonOfResults {
     }
 
     fun countMonitors(result: SerializableFailedMonitorsResult): Map<String, Int> {
+        val counts = mutableMapOf<String, Int>()
+        for (monitor in result.value) {
+            counts.compute(monitor.monitorLabel) { _, l -> l?.plus(1) ?: 1 }
+        }
+        return counts
+    }
+
+    fun countReducedMonitors(result: SerializableFailedMonitorsWithoutTscInstanceResult): Map<String, Int> {
         val counts = mutableMapOf<String, Int>()
         for (monitor in result.value) {
             counts.compute(monitor.monitorLabel) { _, l -> l?.plus(1) ?: 1 }
@@ -453,6 +470,64 @@ class ComparisonOfResults {
         println("✅ CSV written to: ${file.absolutePath}")
     }
 
+    fun csvReducedFailedMonitorPercentageDifference(path1: String, path2: String, outputPath: String) {
+        val result1 = loadMonitorFile(path1)
+        val result2 = loadReducedMonitorFile(path2)
+
+        val countedResult1 = countMonitors(result1)
+        val countedResult2 = countReducedMonitors(result2)
+
+        val percentageDifference =
+            buildPercentageDifferenceBetweenTwoFailedMonitorsResults(countedResult1, countedResult2).toList()
+                .sortedByDescending { it.second }.toMap()
+
+        println("-------------")
+        println("monitor differences:")
+        for (key in percentageDifference.keys) {
+            println(key + " " + percentageDifference[key])
+        }
+
+        percentageDifference.keys.map { s ->
+            s.split(Regex("\\s+")) // Trenne an Leerzeichen
+                .joinToString(" ") { word ->
+                    if (word.all { it.isDigit() }) {
+                        word                     // Wenn Wort nur aus Zahlen besteht → unverändert
+                    } else {
+                        word.firstOrNull()?.toString() ?: "" // Sonst: nur erster Buchstabe
+                    }
+                }
+        }
+
+        val shortened = percentageDifference.mapKeys { (key, _) ->  key.split(Regex("\\s+")) // Trenne an Leerzeichen
+            .joinToString(" ") { word ->
+                if (word.all { it.isDigit() }) {
+                    word                     // Wenn Wort nur aus Zahlen besteht → unverändert
+                } else {
+                    word.firstOrNull()?.toString() ?: "" // Sonst: nur erster Buchstabe
+                }
+            }
+        }
+
+        val file = File(outputPath)
+
+        // CSV header
+        file.printWriter().use { out ->
+            out.println(
+                "instanceIndex,percentage"
+            )
+
+            for (monitor in shortened.keys) {
+                out.println(
+                    listOf(
+                        monitor,
+                        shortened[monitor]
+                    ).joinToString(",")
+                )
+            }
+        }
+        println("✅ CSV written to: ${file.absolutePath}")
+    }
+
     fun csvFailedMonitorTotal(path1: String, outputPath: String) {
         val result1 = loadMonitorFile(path1)
 
@@ -505,10 +580,10 @@ class ComparisonOfResults {
 }
 
 fun main(args: Array<String>) {
-    val pathMonitorFile1 = "serialized-results/100v50w_with_walkers_no_manipulation/failed-monitors/full TSC.json"
-    val pathMonitorFile2 = "serialized-results/100v50w_with_walkers_ignore_lights100/failed-monitors/full TSC.json"
+    val pathMonitorFile1 = "serialized-results/100v50w_with_walkers_no_manipulation/failed-monitors/layer 1+2+4.json"
+    val pathMonitorFile2 = "serialized-results/100v50w_with_walkers_overtaking/failed-monitors/layer 1+2+4.json"
     val pathTSCFile1 = "serialized-results/100v50w_with_walkers_no_manipulation/valid-tsc-instances-per-tsc/layer 1+2+4.json"
-    val pathTSCFile2 = "serialized-results/100v50w_with_walkers_ignore_lights100/valid-tsc-instances-per-tsc/layer 1+2+4.json"
+    val pathTSCFile2 = "serialized-results/100v50w_with_walkers_overtaking/valid-tsc-instances-per-tsc/layer 1+2+4.json"
     val comparisonOfResults = ComparisonOfResults()
 
     //comparisonOfResults.plotFailedMonitorPercentageDifference(pathMonitorFile1, pathMonitorFile2)
@@ -555,22 +630,22 @@ fun main(args: Array<String>) {
     comparisonOfResults.csvInstanceOccurencePercentageDifferenceTop10(
         pathTSCFile1,
         pathTSCFile2,
-        "serialized-results/ignore_lights_instance_occurence_percentage_difference_top10.csv"
+        "serialized-results/instance_occurence_percentage_difference_top10.csv"
     )
 
     comparisonOfResults.csvInstanceOccurencePercentageDifferenceBottom10(
         pathTSCFile1,
         pathTSCFile2,
-        "serialized-results/ignore_lights_instance_occurence_percentage_difference_bot10.csv"
+        "serialized-results/instance_occurence_percentage_difference_bot10.csv"
     )
 
     comparisonOfResults.csvInstanceOccurencePercentageDifferenceNewOnes(
         pathTSCFile1,
         pathTSCFile2,
-        "serialized-results/ignore_lights_instance_occurence_percentage_difference_new_ones.csv"
+        "serialized-results/instance_occurence_percentage_difference_new_ones.csv"
     )
 
-    comparisonOfResults.csvFailedMonitorPercentageDifference(
+    comparisonOfResults.csvReducedFailedMonitorPercentageDifference(
         pathMonitorFile1,
         pathMonitorFile2,
         "serialized-results/monitor_difference.csv"

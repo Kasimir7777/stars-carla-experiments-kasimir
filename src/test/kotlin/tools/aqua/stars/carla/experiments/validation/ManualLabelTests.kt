@@ -17,6 +17,7 @@
 
 package tools.aqua.stars.carla.experiments.validation
 
+import tools.aqua.stars.carla.experiments.keepsDistanceToLeadingVehicle
 import tools.aqua.stars.core.validation.ManualLabelTests
 import tools.aqua.stars.data.av.dataclasses.Actor
 import tools.aqua.stars.data.av.dataclasses.Segment
@@ -26,5 +27,5 @@ import tools.aqua.stars.data.av.dataclasses.TickDataUnitSeconds
 
 class ManualLabelTests :
     ManualLabelTests<Actor, TickData, Segment, TickDataUnitSeconds, TickDataDifferenceSeconds>() {
-  override val manualLabelTestFiles = listOf(manualTests)
+  override val manualLabelTestFiles = listOf(saveDistanceToLeadingVehicleTest, distanceToLeadingVehicleTooSmallTest)
 }

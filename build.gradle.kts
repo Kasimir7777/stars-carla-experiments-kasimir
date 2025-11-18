@@ -38,6 +38,9 @@ dependencies {
   implementation(group = "tools.aqua", name = "stars-data-av")
   implementation(group = "tools.aqua", name = "stars-importer-carla")
   implementation(group = "com.github.ajalt.clikt", name = "clikt", version = "4.4.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+  implementation(group = "org.jetbrains.lets-plot", name = "lets-plot-kotlin-jvm", version = "4.10.0")
+  implementation(group = "org.jetbrains.lets-plot", name = "lets-plot-image-export", version = "4.6.2")
   detektPlugins(
       group = "io.gitlab.arturbosch.detekt", name = "detekt-rules-libraries", version = "1.23.6")
 }
